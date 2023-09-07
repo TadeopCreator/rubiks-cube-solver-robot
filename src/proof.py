@@ -1,9 +1,11 @@
 import tkinter as tk
 from PIL import Image, ImageTk
+import numpy as np
 import cv2
 import kociemba as kc
 from colordetection import color_detector
 from config import config
+from PIL import ImageFont, ImageDraw, Image
 
 width = 60  # width of a facelet in pixels
 facelet_id = [[[0 for col in range(3)] for row in range(3)] for face in range(6)]
@@ -108,7 +110,7 @@ def solve():
     
     show_text(defstr)
     try:
-        if(defstr != 'UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB'):
+        if(defstr != 'UUUUUUUUURRRRRRRRRFRFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB'):
             algo = kc.solve(defstr)
 
             count = count_moves(algo)
@@ -258,14 +260,142 @@ def set_manual_mode():
     create_facelet_rects(width)
     create_colorpick_rects(width)
 
+def get_font(size=TEXT_SIZE):
+        """Load the truetype font with the specified text size."""
+        font_path = '{}/assets/arial-unicode-ms.ttf'.format(ROOT_DIR)
+        return ImageFont.truetype(font_path, size)
+
+def render_text(text, pos, color=(255, 255, 255), size=TEXT_SIZE, anchor='lt'):
+        """
+        Render text with a shadow using the pillow module.
+        """
+        global frame
+
+        font = get_font(24)
+
+        # Convert opencv frame (np.array) to PIL Image array.
+        frame2 = Image.fromarray(frame)
+
+        # Draw the text onto the image.
+        draw = ImageDraw.Draw(frame2)
+        draw.text(pos, text, font=font, fill=color, anchor=anchor,
+                  stroke_width=1, stroke_fill=(0, 0, 0))
+
+        # Convert the pillow frame back to a numpy array.
+        frame = np.array(frame2)
+
+
+def draw_stickers(stickers, offset_x, offset_y):
+        """Draws the given stickers onto the given frame."""
+
+        global frame
+
+        index = -1
+        for row in range(3):
+            for col in range(3):
+                index += 1
+                x1 = (offset_x + STICKER_AREA_TILE_SIZE * col) + STICKER_AREA_TILE_GAP * col
+                y1 = (offset_y + STICKER_AREA_TILE_SIZE * row) + STICKER_AREA_TILE_GAP * row
+                x2 = x1 + STICKER_AREA_TILE_SIZE
+                y2 = y1 + STICKER_AREA_TILE_SIZE
+
+                # shadow
+                cv2.rectangle(
+                    frame,
+                    (x1, y1),
+                    (x2, y2),
+                    (0, 0, 0),
+                    -1
+                )
+
+                # foreground color
+                cv2.rectangle(
+                    frame,
+                    (x1 + 1, y1 + 1),
+                    (x2 - 1, y2 - 1),
+                    color_detector.get_prominent_color(stickers[index]),
+                    -1
+                )
+
+
+def draw_preview_stickers():
+        """Draw the current preview state onto the given frame."""
+        draw_stickers(preview_state, STICKER_AREA_OFFSET, STICKER_AREA_OFFSET)
+
+
+def draw_2d_cube_state():
+        
+        global frame
+        global width, height
+
+        grid = {
+            'white' : [1, 0],
+            'orange': [0, 1],
+            'green' : [1, 1],
+            'red'   : [2, 1],
+            'blue'  : [3, 1],
+            'yellow': [1, 2],
+        }
+
+        # The offset in-between each side (white, red, etc).
+        side_offset = MINI_STICKER_AREA_TILE_GAP * 3
+
+        # The size of 1 whole side (containing 9 stickers).
+        side_size = MINI_STICKER_AREA_TILE_SIZE * 3 + MINI_STICKER_AREA_TILE_GAP * 2
+
+        # The X and Y offset is placed in the bottom-right corner, minus the
+        # whole size of the 4x3 grid, minus an additional offset.
+        offset_x = width - (side_size * 4) - (side_offset * 3) - MINI_STICKER_AREA_OFFSET
+        offset_y = height - (side_size * 3) - (side_offset * 2) - MINI_STICKER_AREA_OFFSET
+
+        for side, (grid_x, grid_y) in grid.items():
+            index = -1
+            for row in range(3):
+                for col in range(3):
+                    index += 1
+                    x1 = int(
+                        (offset_x + MINI_STICKER_AREA_TILE_SIZE * col) +
+                        (MINI_STICKER_AREA_TILE_GAP * col) +
+                        ((side_size + side_offset) * grid_x)
+                    )
+                    y1 = int(
+                        (offset_y + MINI_STICKER_AREA_TILE_SIZE * row) +
+                        (MINI_STICKER_AREA_TILE_GAP * row) +
+                        ((side_size + side_offset) * grid_y)
+                    )
+                    x2 = int(x1 + MINI_STICKER_AREA_TILE_SIZE)
+                    y2 = int(y1 + MINI_STICKER_AREA_TILE_SIZE)
+
+                    foreground_color = COLOR_PLACEHOLDER
+                    if side in result_state:
+                        foreground_color = color_detector.get_prominent_color((result_state[side][index]))
+
+                    # shadow
+                    cv2.rectangle(
+                        frame,
+                        (x1, y1),
+                        (x2, y2),
+                        (0, 0, 0),
+                        -1
+                    )
+
+                    # foreground color
+                    cv2.rectangle(
+                        frame,
+                        (x1 + 1, y1 + 1),
+                        (x2 - 1, y2 - 1),
+                        foreground_color,
+                        -1
+                    )
+
 def show_frame():
     global image_id, frame
 
     ret, frame = cam.read()
    
     if ret and not manual_mode:
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        img = Image.fromarray(frame)
+        fr = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        img = Image.fromarray(fr)
         photo = ImageTk.PhotoImage(image=img)
        
         canvas.photo = photo
@@ -276,7 +406,10 @@ def show_frame():
             image_id = canvas.create_image((0, 0), image=photo, anchor='nw')
             canvas.configure(width=photo.width(), height=photo.height())
            
+    render_text("HOLA COMO ANDAS", (20, height - 20), anchor='lb')
     draw_2d_cube_state()
+    draw_preview_stickers()
+    cv2.imshow("Qbr - Rubik's cube solver", frame)
     root.after(20, show_frame)
 
 
@@ -307,6 +440,17 @@ def close_app(event):
 # --- main ---
 
 image_id = None
+
+colors_to_calibrate = ['green', 'red', 'blue', 'orange', 'white', 'yellow']
+average_sticker_colors = {}
+result_state = {}
+
+snapshot_state = [(255,255,255), (255,255,255), (255,255,255),
+                               (255,255,255), (255,255,255), (255,255,255),
+                               (255,255,255), (255,255,255), (255,255,255)]
+preview_state  = [(255,255,255), (255,255,255), (255,255,255),
+                               (255,255,255), (255,255,255), (255,255,255),
+                               (255,255,255), (255,255,255), (255,255,255)]
 
 root = tk.Tk()
 root.title("Rubik's Cube Solver")
