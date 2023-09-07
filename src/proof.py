@@ -392,7 +392,7 @@ def show_frame():
     global image_id, frame
 
     ret, frame = cam.read()
-   
+   # Hola que tal
     if ret and not manual_mode:
         fr = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         img = Image.fromarray(fr)
