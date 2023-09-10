@@ -1,11 +1,10 @@
 import tkinter as tk
-from PIL import Image, ImageTk
-import numpy as np
 import cv2
-import kociemba as kc
 from colordetection import color_detector
 from config import config
 from PIL import ImageFont, ImageDraw, Image
+import numpy as np
+import kociemba as kc
 
 width = 60  # width of a facelet in pixels
 facelet_id = [[[0 for col in range(3)] for row in range(3)] for face in range(6)]
@@ -15,7 +14,6 @@ t = ("U", "R", "F", "D", "L", "B")
 cols = ("yellow", "green", "red", "white", "blue", "orange")
 from constants import (
     COLOR_PLACEHOLDER,
-    LOCALES,
     ROOT_DIR,
     CUBE_PALETTE,
     MINI_STICKER_AREA_TILE_SIZE,
@@ -26,12 +24,10 @@ from constants import (
     STICKER_AREA_OFFSET,
     STICKER_CONTOUR_COLOR,
     CALIBRATE_MODE_KEY,
-    SWITCH_LANGUAGE_KEY,
     TEXT_SIZE,
     E_INCORRECTLY_SCANNED,
     E_ALREADY_SOLVED
 )
-
 
 
 def show_text(txt):
@@ -128,7 +124,7 @@ def solve():
 
 
 def clean():
-    """Restore the cube to a clean cube."""
+    """Restore the cube to a clean cube"""
     for f in range(6):
         for row in range(3):
             for col in range(3):
@@ -163,12 +159,6 @@ def click(_unused):
             canvas.itemconfig("current", width=5)
         else:
             canvas.itemconfig("current", fill=curcol)
-
-
-
-
-
-
 
 
 
@@ -212,8 +202,8 @@ def draw_2d_cube_state():
                     y2 = int(y1 + MINI_STICKER_AREA_TILE_SIZE)
 
                     foreground_color = COLOR_PLACEHOLDER
-                    #if side in self.result_state:
-                    #    foreground_color = color_detector.get_prominent_color(self.result_state[side][index])
+                    if side in result_state:
+                        foreground_color = color_detector.get_prominent_color(result_state[side][index])
 
                     # shadow
                     cv2.rectangle(
@@ -271,7 +261,7 @@ def render_text(text, pos, color=(255, 255, 255), size=TEXT_SIZE, anchor='lt'):
         """
         global frame
 
-        font = get_font(24)
+        font = get_font(size)
 
         # Convert opencv frame (np.array) to PIL Image array.
         frame2 = Image.fromarray(frame)
@@ -319,12 +309,194 @@ def draw_stickers(stickers, offset_x, offset_y):
 
 
 def draw_preview_stickers():
-        """Draw the current preview state onto the given frame."""
-        draw_stickers(preview_state, STICKER_AREA_OFFSET, STICKER_AREA_OFFSET)
+    """Draw the current preview state onto the given frame."""
+    draw_stickers(preview_state, STICKER_AREA_OFFSET, STICKER_AREA_OFFSET)
 
+
+def draw_snapshot_stickers():
+    """Draw the current snapshot state onto the given frame."""
+    y = STICKER_AREA_TILE_SIZE * 3 + STICKER_AREA_TILE_GAP * 2 + STICKER_AREA_OFFSET * 2
+    draw_stickers(snapshot_state, STICKER_AREA_OFFSET, y)
+
+
+def find_contours(dilatedFrame):
+    """Find the contours of a 3x3x3 cube."""
+    contours, hierarchy = cv2.findContours(dilatedFrame, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    final_contours = []
+
+    # Step 1/4: filter all contours to only those that are square-ish shapes.
+    for contour in contours:
+        perimeter = cv2.arcLength(contour, True)
+        approx = cv2.approxPolyDP(contour, 0.1 * perimeter, True)
+        if len (approx) == 4:
+            area = cv2.contourArea(contour)
+            (x, y, w, h) = cv2.boundingRect(approx)
+
+            # Find aspect ratio of boundary rectangle around the countours.
+            ratio = w / float(h)
+
+            # Check if contour is close to a square.
+            if ratio >= 0.8 and ratio <= 1.2 and w >= 30 and w <= 60 and area / (w * h) > 0.4:
+                final_contours.append((x, y, w, h))
+
+    # Return early if we didn't found 9 or more contours.
+    if len(final_contours) < 9:
+        return []
+
+    # Step 2/4: Find the contour that has 9 neighbors (including itself)
+    # and return all of those neighbors.
+    found = False
+    contour_neighbors = {}
+    for index, contour in enumerate(final_contours):
+        (x, y, w, h) = contour
+        contour_neighbors[index] = []
+        center_x = x + w / 2
+        center_y = y + h / 2
+        radius = 1.5
+
+        # Create 9 positions for the current contour which are the
+        # neighbors. We'll use this to check how many neighbors each contour
+        # has. The only way all of these can match is if the current contour
+        # is the center of the cube. If we found the center, we also know
+        # all the neighbors, thus knowing all the contours and thus knowing
+        # this shape can be considered a 3x3x3 cube. When we've found those
+        # contours, we sort them and return them.
+        neighbor_positions = [
+            # top left
+            [(center_x - w * radius), (center_y - h * radius)],
+
+            # top middle
+            [center_x, (center_y - h * radius)],
+
+            # top right
+            [(center_x + w * radius), (center_y - h * radius)],
+
+            # middle left
+            [(center_x - w * radius), center_y],
+
+            # center
+            [center_x, center_y],
+
+            # middle right
+            [(center_x + w * radius), center_y],
+
+            # bottom left
+            [(center_x - w * radius), (center_y + h * radius)],
+
+            # bottom middle
+            [center_x, (center_y + h * radius)],
+
+            # bottom right
+            [(center_x + w * radius), (center_y + h * radius)],
+        ]
+
+        for neighbor in final_contours:
+            (x2, y2, w2, h2) = neighbor
+            for (x3, y3) in neighbor_positions:
+                # The neighbor_positions are located in the center of each
+                # contour instead of top-left corner.
+                # logic: (top left < center pos) and (bottom right > center pos)
+                if (x2 < x3 and y2 < y3) and (x2 + w2 > x3 and y2 + h2 > y3):
+                    contour_neighbors[index].append(neighbor)
+
+    # Step 3/4: Now that we know how many neighbors all contours have, we'll
+    # loop over them and find the contour that has 9 neighbors, which
+    # includes itself. This is the center piece of the cube. If we come
+    # across it, then the 'neighbors' are actually all the contours we're
+    # looking for.
+    for (contour, neighbors) in contour_neighbors.items():
+        if len(neighbors) == 9:
+            print("1-0")
+            found = True
+            final_contours = neighbors
+            break
+
+    if not found:
+        print("1-1")
+        return []
+
+    # Step 4/4: When we reached this part of the code we found a cube-like
+    # contour. The code below will sort all the contours on their X and Y
+    # values from the top-left to the bottom-right.
+
+    # Sort contours on the y-value first.
+    y_sorted = sorted(final_contours, key=lambda item: item[1])
+
+    # Split into 3 rows and sort each row on the x-value.
+    top_row = sorted(y_sorted[0:3], key=lambda item: item[0])
+    middle_row = sorted(y_sorted[3:6], key=lambda item: item[0])
+    bottom_row = sorted(y_sorted[6:9], key=lambda item: item[0])
+
+    sorted_contours = top_row + middle_row + bottom_row
+    return sorted_contours
+
+def scanned_successfully():
+    """Validate if the user scanned 9 colors for each side."""
+    color_count = {}
+    for side, preview in result_state.items():
+        for bgr in preview:
+            key = str(bgr)
+            if key not in color_count:
+                color_count[key] = 1
+            else:
+                color_count[key] = color_count[key] + 1
+    invalid_colors = [k for k, v in color_count.items() if v != 9]
+    return len(invalid_colors) == 0
+
+def draw_contours(contours):
+    global frame
+    """Draw contours onto the given frame."""
+    if calibrate_mode:
+        # Only show the center piece contour.
+        (x, y, w, h) = contours[4]
+        cv2.rectangle(frame, (x, y), (x + w, y + h), STICKER_CONTOUR_COLOR, 2)
+    else:
+        for index, (x, y, w, h) in enumerate(contours):
+            cv2.rectangle(frame, (x, y), (x + w, y + h), STICKER_CONTOUR_COLOR, 2)
+
+def update_preview_state(contours):
+        """
+        Get the average color value for the contour for every X amount of frames
+        to prevent flickering and more precise results.
+        """
+        global frame
+        max_average_rounds = 8
+        for index, (x, y, w, h) in enumerate(contours):
+            if index in average_sticker_colors and len(average_sticker_colors[index]) == max_average_rounds:
+                sorted_items = {}
+                for bgr in average_sticker_colors[index]:
+                    key = str(bgr)
+                    if key in sorted_items:
+                        sorted_items[key] += 1
+                    else:
+                        sorted_items[key] = 1
+                most_common_color = max(sorted_items, key=lambda i: sorted_items[i])
+                average_sticker_colors[index] = []
+                preview_state[index] = eval(most_common_color)
+                break
+
+            roi = frame[y+7:y+h-7, x+14:x+w-14]
+            avg_bgr = color_detector.get_dominant_color(roi)
+            closest_color = color_detector.get_closest_color(avg_bgr)['color_bgr']
+            preview_state[index] = closest_color
+            if index in average_sticker_colors:
+                average_sticker_colors[index].append(closest_color)
+            else:
+                average_sticker_colors[index] = [closest_color]
+
+def update_snapshot_state():
+    """Update the snapshot state based on the current preview state."""
+    snapshot_state = list(preview_state)
+    center_color_name = color_detector.get_closest_color(snapshot_state[4])['color_name']
+    result_state[center_color_name] = snapshot_state
+    draw_snapshot_stickers()
+
+def draw_scanned_sides():
+    """Display how many sides are scanned by the user."""
+    text = f'Caras escaneadas: {len(result_state.keys())}'
+    render_text(text, (20, height - 20), anchor='lb')
 
 def draw_2d_cube_state():
-        
         global frame
         global width, height
 
@@ -388,35 +560,12 @@ def draw_2d_cube_state():
                         -1
                     )
 
-def show_frame():
-    global image_id, frame
-
-    ret, frame = cam.read()
-   
-    if ret and not manual_mode:
-        fr = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        img = Image.fromarray(fr)
-        photo = ImageTk.PhotoImage(image=img)
-       
-        canvas.photo = photo
-
-        if image_id:
-            canvas.itemconfig(image_id, image=photo)
-        else:
-            image_id = canvas.create_image((0, 0), image=photo, anchor='nw')
-            canvas.configure(width=photo.width(), height=photo.height())
-           
-    render_text("HOLA COMO ANDAS", (20, height - 20), anchor='lb')
-    draw_2d_cube_state()
-    draw_preview_stickers()
-    cv2.imshow("Qbr - Rubik's cube solver", frame)
-    root.after(20, show_frame)
-
 
 def select_mode_auto():
     global manual_mode, cam, width, height
 
     cam = cv2.VideoCapture(1)
+    print('Webcam successfully started')
     cam.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
     cam.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
     width = int(cam.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -431,10 +580,68 @@ def select_mode_auto():
     canvas.pack(fill='both', expand=True)
     show_frame()
 
+def show_frame():
+    global image_id, frame
+    while True:
+        _, frame = cam.read()
+        key = cv2.waitKey(10) & 0xff
+
+        # Quit on escape.
+        if key == 27:
+            close_app(None)
+            
+        if not calibrate_mode:
+            # Update the snapshot when space bar is pressed.
+            if key == 32:
+                update_snapshot_state()
+
+        """
+        # Toggle calibrate mode.
+        if key == ord(CALIBRATE_MODE_KEY):
+            self.reset_calibrate_mode()
+            self.calibrate_mode = not self.calibrate_mode
+        """
+
+        grayFrame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        blurredFrame = cv2.blur(grayFrame, (3, 3))
+        cannyFrame = cv2.Canny(blurredFrame, 30, 60, 3)
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (9, 9))
+        dilatedFrame = cv2.dilate(cannyFrame, kernel)
+
+        contours = find_contours(dilatedFrame)
+        if len(contours) == 9:
+            draw_contours(contours)
+            if not calibrate_mode:
+                update_preview_state(contours)
+            elif key == 32 and done_calibrating is False:
+                current_color = colors_to_calibrate[current_color_to_calibrate_index]
+                (x, y, w, h) = contours[4]
+                roi = frame[y+7:y+h-7, x+14:x+w-14]
+                avg_bgr = color_detector.get_dominant_color(roi)
+                calibrated_colors[current_color] = avg_bgr
+                current_color_to_calibrate_index += 1
+                done_calibrating = current_color_to_calibrate_index == len(colors_to_calibrate)
+                if done_calibrating:
+                    color_detector.set_cube_color_pallete(calibrated_colors)
+                    config.set_setting(CUBE_PALETTE, color_detector.cube_color_palette)
+
+        #if calibrate_mode:
+            #draw_current_color_to_calibrate()
+            #draw_calibrated_colors()
+        #else:
+        draw_preview_stickers()
+        draw_snapshot_stickers()
+        draw_scanned_sides()
+        draw_2d_cube_state()
+
+        cv2.imshow("Rubik's cube solver", frame)
+
 def select_mode_manual():
     set_manual_mode()
 
 def close_app(event):
+    cam.release()
+    cv2.destroyAllWindows()
     root.destroy()
 
 # --- main ---
@@ -452,6 +659,11 @@ preview_state  = [(255,255,255), (255,255,255), (255,255,255),
                                (255,255,255), (255,255,255), (255,255,255),
                                (255,255,255), (255,255,255), (255,255,255)]
 
+calibrate_mode = False
+calibrated_colors = {}
+current_color_to_calibrate_index = 0
+done_calibrating = False
+
 root = tk.Tk()
 root.title("Rubik's Cube Solver")
 
@@ -465,8 +677,6 @@ mode_title = tk.Label(root, text="", font=("Helvetica", 16))
 # Mode Label
 mode_label = tk.Label(root, text="Selecciona modo:")
 mode_label.pack()
-
-canvas = tk.Canvas(root)
 
 manual_label = tk.Label(root, text="Seleccion manual de colores")
 
