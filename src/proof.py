@@ -406,13 +406,11 @@ def find_contours(dilatedFrame):
     # looking for.
     for (contour, neighbors) in contour_neighbors.items():
         if len(neighbors) == 9:
-            print("1-0")
             found = True
             final_contours = neighbors
             break
 
     if not found:
-        print("1-1")
         return []
 
     # Step 4/4: When we reached this part of the code we found a cube-like
@@ -491,10 +489,67 @@ def update_snapshot_state():
     result_state[center_color_name] = snapshot_state
     draw_snapshot_stickers()
 
+def get_text_size(text, size=TEXT_SIZE):
+    """Get text size based on the default freetype2 loaded font."""
+    return get_font(size).getsize(text)
+
 def draw_scanned_sides():
     """Display how many sides are scanned by the user."""
     text = f'Caras escaneadas: {len(result_state.keys())}'
     render_text(text, (20, height - 20), anchor='lb')
+
+def draw_current_color_to_calibrate():
+    """Display the current side's color that needs to be calibrated."""
+    offset_y = 20
+    font_size = int(TEXT_SIZE * 1.25)
+    if done_calibrating:
+        messages = [
+            'calibratedSuccessfully',
+            'quitCalibrateMode',
+        ]
+        for index, text in enumerate(messages):
+            _, textsize_height = get_text_size(text, font_size)
+            y = offset_y + (textsize_height + 10) * index
+            render_text(text, (int(width / 2), y), size=font_size, anchor='mt')
+    else:
+        current_color = colors_to_calibrate[current_color_to_calibrate_index]
+        text = 'currentCalibratingSide: {}'.format(current_color)
+        render_text(text, (int(width / 2), offset_y), size=font_size, anchor='mt')
+
+def draw_calibrated_colors():
+    """Display all the colors that are calibrated while in calibrate mode."""
+    global frame
+    offset_y = 20
+    for index, (color_name, color_bgr) in enumerate(calibrated_colors.items()):
+        x1 = 90
+        y1 = int(offset_y + STICKER_AREA_TILE_SIZE * index)
+        x2 = x1 + STICKER_AREA_TILE_SIZE
+        y2 = y1 + STICKER_AREA_TILE_SIZE
+
+        # shadow
+        cv2.rectangle(
+            frame,
+            (x1, y1),
+            (x2, y2),
+            (0, 0, 0),
+            -1
+        )
+
+        # foreground
+        cv2.rectangle(
+            frame,
+            (x1 + 1, y1 + 1),
+            (x2 - 1, y2 - 1),
+            tuple([int(c) for c in color_bgr]),
+            -1
+        )
+        render_text(color_name, (20, y1 + STICKER_AREA_TILE_SIZE / 2 - 3), anchor='lm')
+
+def reset_calibrate_mode():
+    """Reset calibrate mode variables."""
+    calibrated_colors = {}
+    current_color_to_calibrate_index = 0
+    done_calibrating = False
 
 def draw_2d_cube_state():
         global frame
@@ -581,7 +636,7 @@ def select_mode_auto():
     show_frame()
 
 def show_frame():
-    global image_id, frame
+    global image_id, frame, calibrate_mode
     while True:
         _, frame = cam.read()
         key = cv2.waitKey(10) & 0xff
@@ -595,12 +650,12 @@ def show_frame():
             if key == 32:
                 update_snapshot_state()
 
-        """
+
         # Toggle calibrate mode.
         if key == ord(CALIBRATE_MODE_KEY):
-            self.reset_calibrate_mode()
-            self.calibrate_mode = not self.calibrate_mode
-        """
+            reset_calibrate_mode()
+            calibrate_mode = not calibrate_mode
+
 
         grayFrame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         blurredFrame = cv2.blur(grayFrame, (3, 3))
@@ -625,14 +680,14 @@ def show_frame():
                     color_detector.set_cube_color_pallete(calibrated_colors)
                     config.set_setting(CUBE_PALETTE, color_detector.cube_color_palette)
 
-        #if calibrate_mode:
-            #draw_current_color_to_calibrate()
-            #draw_calibrated_colors()
-        #else:
-        draw_preview_stickers()
-        draw_snapshot_stickers()
-        draw_scanned_sides()
-        draw_2d_cube_state()
+        if calibrate_mode:
+            draw_current_color_to_calibrate()
+            draw_calibrated_colors()
+        else:
+            draw_preview_stickers()
+            draw_snapshot_stickers()
+            draw_scanned_sides()
+            draw_2d_cube_state()
 
         cv2.imshow("Rubik's cube solver", frame)
 
@@ -646,11 +701,14 @@ def close_app(event):
 
 # --- main ---
 
-image_id = None
-
 colors_to_calibrate = ['green', 'red', 'blue', 'orange', 'white', 'yellow']
 average_sticker_colors = {}
 result_state = {}
+
+calibrate_mode = False
+calibrated_colors = {}
+current_color_to_calibrate_index = 0
+done_calibrating = False
 
 snapshot_state = [(255,255,255), (255,255,255), (255,255,255),
                                (255,255,255), (255,255,255), (255,255,255),
@@ -658,11 +716,6 @@ snapshot_state = [(255,255,255), (255,255,255), (255,255,255),
 preview_state  = [(255,255,255), (255,255,255), (255,255,255),
                                (255,255,255), (255,255,255), (255,255,255),
                                (255,255,255), (255,255,255), (255,255,255)]
-
-calibrate_mode = False
-calibrated_colors = {}
-current_color_to_calibrate_index = 0
-done_calibrating = False
 
 root = tk.Tk()
 root.title("Rubik's Cube Solver")
