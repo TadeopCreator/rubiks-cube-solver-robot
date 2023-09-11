@@ -615,7 +615,6 @@ def draw_2d_cube_state():
                         -1
                     )
 
-
 def select_mode_auto():
     global manual_mode, cam, width, height
 
