@@ -2,7 +2,7 @@ import tkinter as tk
 import cv2
 from colordetection import color_detector
 from config import config
-from PIL import ImageFont, ImageDraw, Image
+from PIL import ImageFont, ImageDraw, Image, ImageTk
 import numpy as np
 import kociemba as kc
 
@@ -500,6 +500,7 @@ def draw_scanned_sides():
 
 def draw_current_color_to_calibrate():
     """Display the current side's color that needs to be calibrated."""
+    global done_calibrating, current_color_to_calibrate_index
     offset_y = 20
     font_size = int(TEXT_SIZE * 1.25)
     if done_calibrating:
@@ -518,7 +519,7 @@ def draw_current_color_to_calibrate():
 
 def draw_calibrated_colors():
     """Display all the colors that are calibrated while in calibrate mode."""
-    global frame
+    global frame, calibrated_colors
     offset_y = 20
     for index, (color_name, color_bgr) in enumerate(calibrated_colors.items()):
         x1 = 90
@@ -546,6 +547,7 @@ def draw_calibrated_colors():
         render_text(color_name, (20, y1 + STICKER_AREA_TILE_SIZE / 2 - 3), anchor='lm')
 
 def reset_calibrate_mode():
+    global done_calibrating, current_color_to_calibrate_index, calibrated_colors
     """Reset calibrate mode variables."""
     calibrated_colors = {}
     current_color_to_calibrate_index = 0
@@ -616,7 +618,7 @@ def draw_2d_cube_state():
                     )
 
 def select_mode_auto():
-    global manual_mode, cam, width, height
+    global manual_mode, cam, width, height, canvas
 
     cam = cv2.VideoCapture(1)
     print('Webcam successfully started')
@@ -634,61 +636,53 @@ def select_mode_auto():
     canvas.pack(fill='both', expand=True)
     show_frame()
 
+def show_cam():
+    global image_id, frame, canvas
+    # Si se hace esto antes de generar la imagen que se asigna a photo, que pasa
+    # Se crea photo a partir de la lectura de la captura de la cámara (guardada en frame)
+    fr = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    img = Image.fromarray(fr)
+    photo = ImageTk.PhotoImage(image=img)
+       
+    canvas.photo = photo
+
+    if image_id:
+        canvas.itemconfig(image_id, image=photo)
+    else:
+        image_id = canvas.create_image((0, 0), image=photo, anchor='nw')
+        canvas.configure(width=photo.width(), height=photo.height())
+
+
 def show_frame():
-    global image_id, frame, calibrate_mode
-    while True:
-        _, frame = cam.read()
-        key = cv2.waitKey(10) & 0xff
+    global image_id, frame, calibrate_mode, all_detected_on_calibrating, contours
 
-        # Quit on escape.
-        if key == 27:
-            close_app(None)
-            
+    _, frame = cam.read()
+    key = cv2.waitKey(10) & 0xff
+
+    grayFrame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    blurredFrame = cv2.blur(grayFrame, (3, 3))
+    cannyFrame = cv2.Canny(blurredFrame, 30, 60, 3)
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (9, 9))
+    dilatedFrame = cv2.dilate(cannyFrame, kernel)
+
+    contours = find_contours(dilatedFrame)
+    if len(contours) == 9:
+        draw_contours(contours)
         if not calibrate_mode:
-            # Update the snapshot when space bar is pressed.
-            if key == 32:
-                update_snapshot_state()
+            update_preview_state(contours)
 
+    if calibrate_mode:
+        draw_current_color_to_calibrate()
+        draw_calibrated_colors()
+    else:
+        draw_preview_stickers()
+        draw_snapshot_stickers()
+        draw_scanned_sides()
+        draw_2d_cube_state()
 
-        # Toggle calibrate mode.
-        if key == ord(CALIBRATE_MODE_KEY):
-            reset_calibrate_mode()
-            calibrate_mode = not calibrate_mode
+    show_cam()
+    root.after(10, show_frame)
 
-
-        grayFrame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        blurredFrame = cv2.blur(grayFrame, (3, 3))
-        cannyFrame = cv2.Canny(blurredFrame, 30, 60, 3)
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (9, 9))
-        dilatedFrame = cv2.dilate(cannyFrame, kernel)
-
-        contours = find_contours(dilatedFrame)
-        if len(contours) == 9:
-            draw_contours(contours)
-            if not calibrate_mode:
-                update_preview_state(contours)
-            elif key == 32 and done_calibrating is False:
-                current_color = colors_to_calibrate[current_color_to_calibrate_index]
-                (x, y, w, h) = contours[4]
-                roi = frame[y+7:y+h-7, x+14:x+w-14]
-                avg_bgr = color_detector.get_dominant_color(roi)
-                calibrated_colors[current_color] = avg_bgr
-                current_color_to_calibrate_index += 1
-                done_calibrating = current_color_to_calibrate_index == len(colors_to_calibrate)
-                if done_calibrating:
-                    color_detector.set_cube_color_pallete(calibrated_colors)
-                    config.set_setting(CUBE_PALETTE, color_detector.cube_color_palette)
-
-        if calibrate_mode:
-            draw_current_color_to_calibrate()
-            draw_calibrated_colors()
-        else:
-            draw_preview_stickers()
-            draw_snapshot_stickers()
-            draw_scanned_sides()
-            draw_2d_cube_state()
-
-        cv2.imshow("Rubik's cube solver", frame)
 
 def select_mode_manual():
     set_manual_mode()
@@ -698,7 +692,35 @@ def close_app(event):
     cv2.destroyAllWindows()
     root.destroy()
 
+def update_key(event):
+    global contours, done_calibrating, current_color_to_calibrate_index
+    # Update the snapshot when space bar is pressed.
+    if not calibrate_mode:
+        update_snapshot_state()
+    elif done_calibrating is False:
+        current_color = colors_to_calibrate[current_color_to_calibrate_index]
+        (x, y, w, h) = contours[4]
+        roi = frame[y+7:y+h-7, x+14:x+w-14]
+        avg_bgr = color_detector.get_dominant_color(roi)
+        calibrated_colors[current_color] = avg_bgr
+        current_color_to_calibrate_index += 1
+        done_calibrating = current_color_to_calibrate_index == len(colors_to_calibrate)
+        if done_calibrating:
+            color_detector.set_cube_color_pallete(calibrated_colors)
+            config.set_setting(CUBE_PALETTE, color_detector.cube_color_palette)
+
+        
+
+def set_calibrate_mode(event):
+    # Toggle calibrate mode.
+    global calibrate_mode
+    reset_calibrate_mode()
+    calibrate_mode = not calibrate_mode
+
 # --- main ---
+
+image_id = None
+contours = None
 
 colors_to_calibrate = ['green', 'red', 'blue', 'orange', 'white', 'yellow']
 average_sticker_colors = {}
@@ -740,6 +762,8 @@ manual_button = tk.Button(root, text="Manual", command=select_mode_manual)
 manual_button.pack(pady=10)
 
 root.bind("<Escape>", close_app)  # Asociar la tecla Escape con la función de cierre
+root.bind('c', set_calibrate_mode)
+root.bind('<space>', update_key)
 
 canvas = tk.Canvas(root, width=12 * width + 20, height=9 * width + 20)
 canvas.pack()
