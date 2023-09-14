@@ -32,14 +32,11 @@ from constants import (
     E_ALREADY_SOLVED
 )
 
-
-
 def show_text(txt):
     """Display messages."""
     print(txt)
     display.insert(tk.INSERT, txt)
     root.update_idletasks()
-
 
 def create_facelet_rects(a):
     """Initialize the facelet grid on the canvas."""
@@ -55,7 +52,6 @@ def create_facelet_rects(a):
     for f in range(6):
         canvas.itemconfig(facelet_id[f][1][1], fill=cols[f])
 
-
 def create_colorpick_rects(a):
     """Initialize the "paintbox" on the canvas."""
     global curcol
@@ -66,7 +62,6 @@ def create_colorpick_rects(a):
         colorpick_id[i] = canvas.create_rectangle(x, y, x + a, y + a, fill=cols[i])
         canvas.itemconfig(colorpick_id[0], width=4)
         curcol = cols[0]
-
 
 def get_definition_string():
     """Generate the cube definition string from the facelet colors."""
@@ -134,7 +129,6 @@ def clean():
             for col in range(3):
                 canvas.itemconfig(facelet_id[f][row][col], fill=canvas.itemcget(facelet_id[f][1][1], "fill"))
 
-
 def empty():
     """Remove the facelet colors except the center facelets colors."""
     for f in range(6):
@@ -142,7 +136,6 @@ def empty():
             for col in range(3):
                 if row != 1 or col != 1:
                     canvas.itemconfig(facelet_id[f][row][col], fill="grey")
-
 
 def random():
     """Generate a random cube and set the corresponding facelet colors."""
@@ -163,14 +156,6 @@ def click(_unused):
             canvas.itemconfig("current", width=5)
         else:
             canvas.itemconfig("current", fill=curcol)
-
-
-
-
-
-
-
-
 
 def draw_2d_cube_state():
         grid = {
@@ -233,8 +218,6 @@ def draw_2d_cube_state():
                         -1
                     )
 
-
-
 def set_manual_mode():
     manual_mode = True
     mode_label.pack_forget()
@@ -284,7 +267,6 @@ def render_text(text, pos, color=(255, 255, 255), size=TEXT_SIZE, anchor='lt'):
         # Convert the pillow frame back to a numpy array.
         frame = np.array(frame2)
 
-
 def draw_stickers(stickers, offset_x, offset_y):
         """Draws the given stickers onto the given frame."""
 
@@ -317,11 +299,9 @@ def draw_stickers(stickers, offset_x, offset_y):
                     -1
                 )
 
-
 def draw_preview_stickers():
         """Draw the current preview state onto the given frame."""
         draw_stickers(preview_state, STICKER_AREA_OFFSET, STICKER_AREA_OFFSET)
-
 
 def draw_2d_cube_state():
         
@@ -394,6 +374,11 @@ def show_frame():
     ret, frame = cam.read()
    # Hola que tal
     if ret and not manual_mode:
+        # Si se hace esto antes de generar la imagen que se asigna a photo, que pasa
+        render_text("HOLA COMO ANDAS", (20, height - 20), anchor='lb')
+        draw_2d_cube_state()
+        draw_preview_stickers()
+        # Se crea photo a partir de la lectura de la captura de la cámara (guardada en frame)
         fr = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         img = Image.fromarray(fr)
         photo = ImageTk.PhotoImage(image=img)
@@ -406,17 +391,16 @@ def show_frame():
             image_id = canvas.create_image((0, 0), image=photo, anchor='nw')
             canvas.configure(width=photo.width(), height=photo.height())
            
-    render_text("HOLA COMO ANDAS", (20, height - 20), anchor='lb')
-    draw_2d_cube_state()
-    draw_preview_stickers()
-    cv2.imshow("Qbr - Rubik's cube solver", frame)
+    #render_text("HOLA COMO ANDAS", (20, height - 20), anchor='lb')
+    #draw_2d_cube_state()
+    #draw_preview_stickers()
+    #cv2.imshow("Qbr - Rubik's cube solver", frame)
     root.after(20, show_frame)
-
 
 def select_mode_auto():
     global manual_mode, cam, width, height
 
-    cam = cv2.VideoCapture(1)
+    cam = cv2.VideoCapture(0)
     cam.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
     cam.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
     width = int(cam.get(cv2.CAP_PROP_FRAME_WIDTH))
