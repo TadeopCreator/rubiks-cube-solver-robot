@@ -617,7 +617,7 @@ def draw_2d_cube_state():
                         -1
                     )
 
-def select_mode_auto():
+def set_mode_auto():
     global manual_mode, cam, width, height, canvas
 
     cam = cv2.VideoCapture(1)
@@ -684,9 +684,6 @@ def show_frame():
     root.after(10, show_frame)
 
 
-def select_mode_manual():
-    set_manual_mode()
-
 def close_app(event):
     cam.release()
     cv2.destroyAllWindows()
@@ -709,7 +706,6 @@ def update_key(event):
             color_detector.set_cube_color_pallete(calibrated_colors)
             config.set_setting(CUBE_PALETTE, color_detector.cube_color_palette)
 
-        
 
 def set_calibrate_mode(event):
     # Toggle calibrate mode.
@@ -755,10 +751,10 @@ mode_label.pack()
 manual_label = tk.Label(root, text="Seleccion manual de colores")
 
 # Buttons
-auto_button = tk.Button(root, text="Automático", command=select_mode_auto)
+auto_button = tk.Button(root, text="Automático", command=set_mode_auto)
 auto_button.pack(pady=10)
 
-manual_button = tk.Button(root, text="Manual", command=select_mode_manual)
+manual_button = tk.Button(root, text="Manual", command=set_manual_mode)
 manual_button.pack(pady=10)
 
 root.bind("<Escape>", close_app)  # Asociar la tecla Escape con la función de cierre
