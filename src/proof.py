@@ -232,7 +232,6 @@ def set_manual_mode():
     manual_button.pack_forget()
     mode_title.config(text="Modo Manual")
     mode_title.pack(side=tk.TOP, pady=10)
-    manual_label.pack(side=tk.TOP, pady=20)
 
     global display
 
@@ -620,7 +619,7 @@ def draw_2d_cube_state():
 def set_mode_auto():
     global manual_mode, cam, width, height, canvas
 
-    cam = cv2.VideoCapture(1)
+    cam = cv2.VideoCapture(0)
     print('Webcam successfully started')
     cam.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
     cam.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
@@ -745,13 +744,11 @@ title_label.pack(pady=10)
 mode_title = tk.Label(root, text="", font=("Helvetica", 16))
 
 # Mode Label
-mode_label = tk.Label(root, text="Selecciona modo:")
+mode_label = tk.Label(root, text="Select mode:")
 mode_label.pack()
 
-manual_label = tk.Label(root, text="Seleccion manual de colores")
-
 # Buttons
-auto_button = tk.Button(root, text="Automático", command=set_mode_auto)
+auto_button = tk.Button(root, text="Atomatic", command=set_mode_auto)
 auto_button.pack(pady=10)
 
 manual_button = tk.Button(root, text="Manual", command=set_manual_mode)
