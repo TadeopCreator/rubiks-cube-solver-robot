@@ -1,17 +1,4 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-# vim: fenc=utf-8 ts=4 sw=4 et
-
 import math
-from constants import LOCALES
-
-def get_next_locale(locale):
-    """Cycle through the locales and get the next locale."""
-    keys = list(LOCALES.keys())
-    index = keys.index(locale)
-    if index + 1 >= len(keys):
-        return keys[0]
-    return keys[index + 1]
 
 # Taken from https://stackoverflow.com/a/16020102
 def bgr2lab(inputColor):

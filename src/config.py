@@ -1,14 +1,10 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-# vim: fenc=utf-8 ts=4 sw=4 et
-
 import os
 import json
 
 class Config:
-
+    
     def __init__(self):
-        self.config_dir = os.path.expanduser('~/.config/qbr')
+        self.config_dir = os.path.expanduser('C:\\Users\\Tadeio\\Desktop\\Facultad\\Taller de Proyecto 1\\config cube')
         self.settings_file = os.path.join(self.config_dir, 'settings.json')
 
         try:

@@ -1,33 +1,42 @@
 import tkinter as tk
+import os
 import cv2
-from colordetection import color_detector
-from config import config
-from PIL import ImageFont, ImageDraw, Image, ImageTk
+import serial
 import numpy as np
 import kociemba as kc
+from config import config
+from colordetection import color_detector
+from PIL import ImageFont, ImageDraw, Image, ImageTk
 
-width = 60  # width of a facelet in pixels
+width = 60  # Width of a facelet in pixels
 facelet_id = [[[0 for col in range(3)] for row in range(3)] for face in range(6)]
 colorpick_id = [0 for i in range(6)]
 curcol = None
-t = ("U", "R", "F", "D", "L", "B")
-cols = ("yellow", "green", "red", "white", "blue", "orange")
-from constants import (
-    COLOR_PLACEHOLDER,
-    ROOT_DIR,
-    CUBE_PALETTE,
-    MINI_STICKER_AREA_TILE_SIZE,
-    MINI_STICKER_AREA_TILE_GAP,
-    MINI_STICKER_AREA_OFFSET,
-    STICKER_AREA_TILE_SIZE,
-    STICKER_AREA_TILE_GAP,
-    STICKER_AREA_OFFSET,
-    STICKER_CONTOUR_COLOR,
-    CALIBRATE_MODE_KEY,
-    TEXT_SIZE,
-    E_INCORRECTLY_SCANNED,
-    E_ALREADY_SOLVED
-)
+t = ("U", "R", "F", "D", "L", "B")  # Available moves
+cols = ("yellow", "green", "red", "white", "blue", "orange")  # Facelet colors
+
+# Global
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Colors
+COLOR_PLACEHOLDER = (150, 150, 150)
+
+# Camera interface
+MINI_STICKER_AREA_TILE_SIZE = 14
+MINI_STICKER_AREA_TILE_GAP = 2
+MINI_STICKER_AREA_OFFSET = 20
+
+STICKER_AREA_TILE_SIZE = 30
+STICKER_AREA_TILE_GAP = 4
+STICKER_AREA_OFFSET = 20
+
+STICKER_CONTOUR_COLOR = (36, 255, 12)
+TEXT_SIZE = 18
+
+# Config
+CUBE_PALETTE = 'cube_palette'
+
+#serialPort = serial.Serial(port='COM4', baudrate=9600, timeout=0, parity=serial.PARITY_EVEN, stopbits=1)
 
 
 def show_text(txt):
@@ -75,9 +84,8 @@ def get_definition_string():
             for col in range(3):
                 s += color_to_facelet[canvas.itemcget(facelet_id[f][row][col], "fill")]
     return s
-########################################################################################################################
 
-# ############################### Solve the displayed cube with a local or remote server ###############################
+################################ Solve the displayed cube with a local or remote server ###############################
 
 def count_moves(sequence):
     move_list = sequence.split()
@@ -95,7 +103,7 @@ def count_moves(sequence):
 
 
 def solve():
-    """Connect to the server and return the solving maneuver."""
+    """Get solution from kociemba library."""
     display.delete(1.0, tk.END)  # clear output window
 
     try:
@@ -104,24 +112,27 @@ def solve():
         show_text(f'Cubo invalido {e.__doc__}')
         return
     
-    show_text(defstr)
     try:
         if(defstr != 'UUUUUUUUURRRRRRRRRFRFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB'):
             algo = kc.solve(defstr)
 
             count = count_moves(algo)
-            show_text(f'Solucion: {algo}\n')
-            show_text(f'Numero de movimientos: {count}')
+            show_text(f'Solution: {algo}\n')
+            show_text(f'Number of movements: {count}\n')
+            show_text("Sending via Bluetooth...\n")
+            #send_bluetooth(algo)
         else:
-            show_text('\nCubo ya resuelto')
+            show_text('Already solved')
     except BaseException as e:
         show_text(e.args[0])
         return
+    
+def send_bluetooth(solution):
+    serialPort.flush()
+    serialPort.write(str.encode(solution))
+    show_text("Sended")
 
-########################################################################################################################
-
-# ################################# Functions to change the facelet colors #############################################
-
+################################## Functions to change the facelet colors #############################################
 
 def clean():
     """Restore the cube to a clean cube"""
@@ -226,25 +237,22 @@ def draw_2d_cube_state():
 
 
 def set_manual_mode():
-    manual_mode = True
+    global display
+
     mode_label.pack_forget()
     auto_button.pack_forget()
     manual_button.pack_forget()
-    mode_title.config(text="Modo Manual")
-    mode_title.pack(side=tk.TOP, pady=10)
-
-    global display
 
     bsolve = tk.Button(text="Solve", height=2, width=10, relief=tk.RAISED, command=solve)
-    bsolve_window = canvas.create_window(10 + 10.5 * width, 10 + 6.5 * width, anchor=tk.NW, window=bsolve)
+    canvas.create_window(10 + 10.5 * width, 10 + 6.5 * width, anchor=tk.NW, window=bsolve)
     bclean = tk.Button(text="Clean", height=1, width=10, relief=tk.RAISED, command=clean)
-    bclean_window = canvas.create_window(10 + 10.5 * width, 10 + 7.5 * width, anchor=tk.NW, window=bclean)
+    canvas.create_window(10 + 10.5 * width, 10 + 7.5 * width, anchor=tk.NW, window=bclean)
     bempty = tk.Button(text="Empty", height=1, width=10, relief=tk.RAISED, command=empty)
-    bempty_window = canvas.create_window(10 + 10.5 * width, 10 + 8 * width, anchor=tk.NW, window=bempty)
+    canvas.create_window(10 + 10.5 * width, 10 + 8 * width, anchor=tk.NW, window=bempty)
     brandom = tk.Button(text="Random", height=1, width=10, relief=tk.RAISED, command=random)
-    brandom_window = canvas.create_window(10 + 10.5 * width, 10 + 8.5 * width, anchor=tk.NW, window=brandom)
+    canvas.create_window(10 + 10.5 * width, 10 + 8.5 * width, anchor=tk.NW, window=brandom)
     display = tk.Text(height=7, width=39)
-    text_window = canvas.create_window(10 + 6.5 * width, 10 + .5 * width, anchor=tk.NW, window=display)
+    canvas.create_window(10 + 6.5 * width, 10 + .5 * width, anchor=tk.NW, window=display)
     canvas.bind("<Button-1>", click)
     create_facelet_rects(width)
     create_colorpick_rects(width)
@@ -255,8 +263,7 @@ def get_font(size=TEXT_SIZE):
         return ImageFont.truetype(font_path, size)
 
 def render_text(text, pos, color=(255, 255, 255), size=TEXT_SIZE, anchor='lt'):
-        """
-        Render text with a shadow using the pillow module.
+        """Render text with a shadow using the pillow module.
         """
         global frame
 
@@ -275,8 +282,8 @@ def render_text(text, pos, color=(255, 255, 255), size=TEXT_SIZE, anchor='lt'):
 
 
 def draw_stickers(stickers, offset_x, offset_y):
-        """Draws the given stickers onto the given frame."""
-
+        """Draws the given stickers onto the given frame.
+        """
         global frame
 
         index = -1
@@ -320,7 +327,7 @@ def draw_snapshot_stickers():
 
 def find_contours(dilatedFrame):
     """Find the contours of a 3x3x3 cube."""
-    contours, hierarchy = cv2.findContours(dilatedFrame, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    contours, _ = cv2.findContours(dilatedFrame, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     final_contours = []
 
     # Step 1/4: filter all contours to only those that are square-ish shapes.
@@ -428,7 +435,8 @@ def find_contours(dilatedFrame):
     return sorted_contours
 
 def scanned_successfully():
-    """Validate if the user scanned 9 colors for each side."""
+    """Validate if the user scanned 9 colors for each side.
+    """
     color_count = {}
     for side, preview in result_state.items():
         for bgr in preview:
@@ -442,7 +450,8 @@ def scanned_successfully():
 
 def draw_contours(contours):
     global frame
-    """Draw contours onto the given frame."""
+    """Draw contours onto the given frame.
+    """
     if calibrate_mode:
         # Only show the center piece contour.
         (x, y, w, h) = contours[4]
@@ -452,8 +461,7 @@ def draw_contours(contours):
             cv2.rectangle(frame, (x, y), (x + w, y + h), STICKER_CONTOUR_COLOR, 2)
 
 def update_preview_state(contours):
-        """
-        Get the average color value for the contour for every X amount of frames
+        """Get the average color value for the contour for every X amount of frames
         to prevent flickering and more precise results.
         """
         global frame
@@ -482,23 +490,27 @@ def update_preview_state(contours):
                 average_sticker_colors[index] = [closest_color]
 
 def update_snapshot_state():
-    """Update the snapshot state based on the current preview state."""
+    """Update the snapshot state based on the current preview state.
+    """
     snapshot_state = list(preview_state)
     center_color_name = color_detector.get_closest_color(snapshot_state[4])['color_name']
     result_state[center_color_name] = snapshot_state
     draw_snapshot_stickers()
 
 def get_text_size(text, size=TEXT_SIZE):
-    """Get text size based on the default freetype2 loaded font."""
+    """Get text size based on the default freetype2 loaded font.
+    """
     return get_font(size).getsize(text)
 
 def draw_scanned_sides():
-    """Display how many sides are scanned by the user."""
+    """Display how many sides are scanned by the user.
+    """
     text = f'Caras escaneadas: {len(result_state.keys())}'
     render_text(text, (20, height - 20), anchor='lb')
 
 def draw_current_color_to_calibrate():
-    """Display the current side's color that needs to be calibrated."""
+    """Display the current side's color that needs to be calibrated.
+    """
     global done_calibrating, current_color_to_calibrate_index
     offset_y = 20
     font_size = int(TEXT_SIZE * 1.25)
@@ -517,7 +529,8 @@ def draw_current_color_to_calibrate():
         render_text(text, (int(width / 2), offset_y), size=font_size, anchor='mt')
 
 def draw_calibrated_colors():
-    """Display all the colors that are calibrated while in calibrate mode."""
+    """Display all the colors that are calibrated while in calibrate mode.
+    """
     global frame, calibrated_colors
     offset_y = 20
     for index, (color_name, color_bgr) in enumerate(calibrated_colors.items()):
@@ -546,15 +559,16 @@ def draw_calibrated_colors():
         render_text(color_name, (20, y1 + STICKER_AREA_TILE_SIZE / 2 - 3), anchor='lm')
 
 def reset_calibrate_mode():
+    """Reset calibrate mode variables.
+    """
     global done_calibrating, current_color_to_calibrate_index, calibrated_colors
-    """Reset calibrate mode variables."""
+
     calibrated_colors = {}
     current_color_to_calibrate_index = 0
     done_calibrating = False
 
 def draw_2d_cube_state():
-        global frame
-        global width, height
+        global frame, width, height
 
         grid = {
             'white' : [1, 0],
@@ -630,8 +644,6 @@ def set_mode_auto():
     mode_label.pack_forget()
     auto_button.pack_forget()
     manual_button.pack_forget()
-    mode_title.config(text="Modo Automático")
-    mode_title.pack(side=tk.TOP, pady=10)
     canvas.pack(fill='both', expand=True)
     show_frame()
 
@@ -684,7 +696,11 @@ def show_frame():
 
 
 def close_app(event):
-    cam.release()
+    try:
+        cam.release()
+    except:
+        pass
+
     cv2.destroyAllWindows()
     root.destroy()
 
@@ -712,53 +728,53 @@ def set_calibrate_mode(event):
     reset_calibrate_mode()
     calibrate_mode = not calibrate_mode
 
-# --- main ---
+### Main ###
+if __name__ == "__main__":
+    image_id = None
+    contours = None
 
-image_id = None
-contours = None
+    colors_to_calibrate = ['green', 'red', 'blue', 'orange', 'white', 'yellow']
+    average_sticker_colors = {}
+    result_state = {}
 
-colors_to_calibrate = ['green', 'red', 'blue', 'orange', 'white', 'yellow']
-average_sticker_colors = {}
-result_state = {}
+    calibrate_mode = False
+    calibrated_colors = {}
+    current_color_to_calibrate_index = 0
+    done_calibrating = False
 
-calibrate_mode = False
-calibrated_colors = {}
-current_color_to_calibrate_index = 0
-done_calibrating = False
+    snapshot_state = [(255,255,255), (255,255,255), (255,255,255),
+                                (255,255,255), (255,255,255), (255,255,255),
+                                (255,255,255), (255,255,255), (255,255,255)]
+    preview_state  = [(255,255,255), (255,255,255), (255,255,255),
+                                (255,255,255), (255,255,255), (255,255,255),
+                                (255,255,255), (255,255,255), (255,255,255)]
 
-snapshot_state = [(255,255,255), (255,255,255), (255,255,255),
-                               (255,255,255), (255,255,255), (255,255,255),
-                               (255,255,255), (255,255,255), (255,255,255)]
-preview_state  = [(255,255,255), (255,255,255), (255,255,255),
-                               (255,255,255), (255,255,255), (255,255,255),
-                               (255,255,255), (255,255,255), (255,255,255)]
+    root = tk.Tk()
+    root.title("Rubik's Cube Solver")
 
-root = tk.Tk()
-root.title("Rubik's Cube Solver")
+    # Title Label
+    title_label = tk.Label(root, text="Rubik's Cube Solver", font=("Helvetica", 20))
+    title_label.pack(pady=10)
 
-# Title Label
-title_label = tk.Label(root, text="Rubik's Cube Solver", font=("Helvetica", 20))
-title_label.pack(pady=10)
+    # Mode Title Label
+    mode_title = tk.Label(root, text="", font=("Helvetica", 16))
 
-# Mode Title Label
-mode_title = tk.Label(root, text="", font=("Helvetica", 16))
+    # Mode Label
+    mode_label = tk.Label(root, text="Select mode:")
+    mode_label.pack()
 
-# Mode Label
-mode_label = tk.Label(root, text="Select mode:")
-mode_label.pack()
+    # Buttons
+    auto_button = tk.Button(root, text="Atomatic", command=set_mode_auto)
+    auto_button.pack(pady=10)
 
-# Buttons
-auto_button = tk.Button(root, text="Atomatic", command=set_mode_auto)
-auto_button.pack(pady=10)
+    manual_button = tk.Button(root, text="Manual", command=set_manual_mode)
+    manual_button.pack(pady=10)
 
-manual_button = tk.Button(root, text="Manual", command=set_manual_mode)
-manual_button.pack(pady=10)
+    root.bind("<Escape>", close_app)  # Asociar la tecla Escape con la función de cierre
+    root.bind('c', set_calibrate_mode)
+    root.bind('<space>', update_key)
 
-root.bind("<Escape>", close_app)  # Asociar la tecla Escape con la función de cierre
-root.bind('c', set_calibrate_mode)
-root.bind('<space>', update_key)
+    canvas = tk.Canvas(root, width=12 * width + 20, height=9 * width + 20)
+    canvas.pack()
 
-canvas = tk.Canvas(root, width=12 * width + 20, height=9 * width + 20)
-canvas.pack()
-
-root.mainloop()
+    root.mainloop()
