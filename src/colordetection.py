@@ -1,12 +1,10 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-# vim: fenc=utf-8 ts=4 sw=4 et
-
 import numpy as np
 import cv2
 from helpers import ciede2000, bgr2lab
 from config import config
-from constants import CUBE_PALETTE, COLOR_PLACEHOLDER
+
+CUBE_PALETTE = 'cube_palette'
+COLOR_PLACEHOLDER = (150, 150, 150)
 
 class ColorDetection:
 
