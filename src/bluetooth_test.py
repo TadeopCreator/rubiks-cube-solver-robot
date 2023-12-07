@@ -12,7 +12,7 @@ while True:
 
     serialPort.flush()
     # limpiar buffer
-    serialPort.write(str.encode('h'))
+    serialPort.write(str.encode('hola'))
 
 # while True:
 #     data = serialPort.readline(size)
