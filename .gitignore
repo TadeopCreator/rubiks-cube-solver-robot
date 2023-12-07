@@ -6,7 +6,8 @@
 
 # Icon must end with two \r
 Icon
-
+config cube
+../src/config.py
 
 # Thumbnails
 ._*
@@ -236,4 +237,3 @@ $RECYCLE.BIN/
 
 # Local History for Visual Studio Code
 .history/
-src/config.py

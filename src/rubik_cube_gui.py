@@ -128,8 +128,8 @@ def solve():
         return
     
 def send_bluetooth(solution):
-    serialPort.flush()
-    serialPort.write(str.encode(solution))
+    #serialPort.flush()
+    #serialPort.write(str.encode(solution))
     show_text("Sended")
 
 ################################## Functions to change the facelet colors #############################################
@@ -495,12 +495,16 @@ def update_snapshot_state():
     snapshot_state = list(preview_state)
     center_color_name = color_detector.get_closest_color(snapshot_state[4])['color_name']
     result_state[center_color_name] = snapshot_state
+    if len(result_state.keys()) == 6:
+        print("solve!")
+        print(result_state)
+        #{'yellow': [(147, 94, 44), (147, 94, 44), (147, 94, 44), (63, 64, 199), (110, 224, 228), (218, 222, 220), (101, 137, 255), (101, 137, 255), (63, 64, 199)], 'blue': [(110, 224, 228), (58, 145, 50), (147, 94, 44), (110, 224, 228), (147, 94, 44), (218, 222, 220), (58, 145, 50), (101, 137, 255), (58, 145, 50)], 'white': [(218, 222, 220), (218, 222, 220), (147, 94, 44), (147, 94, 44), (218, 222, 220), (101, 137, 255), (58, 145, 50), (110, 224, 228), (110, 224, 228)], 'green': [(218, 222, 220), (218, 222, 220), (147, 94, 44), (147, 94, 44), (58, 145, 50), (101, 137, 255), (58, 145, 50), (110, 224, 228), (110, 224, 228)], 'orange': [(101, 137, 255), (218, 222, 220), (101, 137, 255), (147, 94, 44), (101, 137, 255), (147, 94, 44), (63, 64, 199), (101, 137, 255), (110, 224, 228)], 'red': [(218, 222, 220), (58, 145, 50), (58, 145, 50), (147, 94, 44), (63, 64, 199), (58, 145, 50), (218, 222, 220), (58, 145, 50), (63, 64, 199)]} 
     draw_snapshot_stickers()
 
 def get_text_size(text, size=TEXT_SIZE):
     """Get text size based on the default freetype2 loaded font.
     """
-    return get_font(size).getsize(text)
+    return get_font(size)#.getsize(text)
 
 def draw_scanned_sides():
     """Display how many sides are scanned by the user.
@@ -515,14 +519,8 @@ def draw_current_color_to_calibrate():
     offset_y = 20
     font_size = int(TEXT_SIZE * 1.25)
     if done_calibrating:
-        messages = [
-            'calibratedSuccessfully',
-            'quitCalibrateMode',
-        ]
-        for index, text in enumerate(messages):
-            _, textsize_height = get_text_size(text, font_size)
-            y = offset_y + (textsize_height + 10) * index
-            render_text(text, (int(width / 2), y), size=font_size, anchor='mt')
+        text = 'calibratedSuccessfully'
+        render_text(text, (int(width / 2), offset_y), size=font_size, anchor='mt')
     else:
         current_color = colors_to_calibrate[current_color_to_calibrate_index]
         text = 'currentCalibratingSide: {}'.format(current_color)
