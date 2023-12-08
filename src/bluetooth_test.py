@@ -12,6 +12,7 @@ while True:
 
     serialPort.flush()
     # limpiar buffer
+
     # serialPort.write(str.encode('Fp Up F2 R L U2 Bp'))
     serialPort.write(str.encode('#hola!'))
 
