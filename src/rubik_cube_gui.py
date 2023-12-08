@@ -14,6 +14,7 @@ colorpick_id = [0 for i in range(6)]
 curcol = None
 t = ("U", "R", "F", "D", "L", "B")  # Available moves
 cols = ("yellow", "green", "red", "white", "blue", "orange")  # Facelet colors
+colors_in_faces = {}
 
 # Global
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -489,19 +490,71 @@ def update_preview_state(contours):
             else:
                 average_sticker_colors[index] = [closest_color]
 
+def translate_to_defstr():
+    """ Translate name of colors to a defstring for the kociemba algorithm
+        Defstring: UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB
+        The fuction considers front face is green and up face is white
+    """
+    face_correlation = {
+        'white': 'U',
+        'red': 'R',
+        'green': 'F',
+        'yellow': 'D',
+        'orange': 'L',
+        'blue': 'B'
+    }
+
+    order = ['white', 'red', 'green', 'yellow', 'orange', 'blue']
+
+    defstring = ""
+
+    for face in order:
+        colores_transformados = [ face_correlation[color] for color in colors_in_faces[face] ]
+        defstring += ''.join(colores_transformados)
+
+    return defstring
+
+
+
+
 def update_snapshot_state():
     """Update the snapshot state based on the current preview state.
     """
     snapshot_state = list(preview_state)
     center_color_name = color_detector.get_closest_color(snapshot_state[4])['color_name']
     result_state[center_color_name] = snapshot_state
-    print(color_detector.cube_color_palette)
+    colors_list = []
+    # Add colors to color faces state
+    for i in range(9):
+        colors_list.append(color_detector.get_closest_color(snapshot_state[i])['color_name'])
+
+    colors_in_faces[center_color_name] = colors_list
+    print(colors_in_faces)
+
     if len(result_state.keys()) == 6:
-        print("solve!")
-        print(result_state)
-        color_bgr = calibrated_colors['yellow']
-        print(f'Yellow: {color_bgr}')
-        #{'yellow': [(147, 94, 44), (147, 94, 44), (147, 94, 44), (63, 64, 199), (110, 224, 228), (218, 222, 220), (101, 137, 255), (101, 137, 255), (63, 64, 199)], 'blue': [(110, 224, 228), (58, 145, 50), (147, 94, 44), (110, 224, 228), (147, 94, 44), (218, 222, 220), (58, 145, 50), (101, 137, 255), (58, 145, 50)], 'white': [(218, 222, 220), (218, 222, 220), (147, 94, 44), (147, 94, 44), (218, 222, 220), (101, 137, 255), (58, 145, 50), (110, 224, 228), (110, 224, 228)], 'green': [(218, 222, 220), (218, 222, 220), (147, 94, 44), (147, 94, 44), (58, 145, 50), (101, 137, 255), (58, 145, 50), (110, 224, 228), (110, 224, 228)], 'orange': [(101, 137, 255), (218, 222, 220), (101, 137, 255), (147, 94, 44), (101, 137, 255), (147, 94, 44), (63, 64, 199), (101, 137, 255), (110, 224, 228)], 'red': [(218, 222, 220), (58, 145, 50), (58, 145, 50), (147, 94, 44), (63, 64, 199), (58, 145, 50), (218, 222, 220), (58, 145, 50), (63, 64, 199)]} 
+        defstr = translate_to_defstr()
+        print(defstr)
+        try:
+            if(defstr != 'UUUUUUUUURRRRRRRRRFRFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB'):
+                algo = kc.solve(defstr)
+
+                count = count_moves(algo)
+                print(f'Solution: {algo}\n')
+                print(f'Number of movements: {count}\n')
+
+                # Replace ' with -
+                modified_string = algo.replace("'", "-")
+
+                # Add ! at the end
+                modified_string += "!"
+
+                print(modified_string)
+            else:
+                print('Already solved')
+        except BaseException as e:
+            print(e.args[0])
+            return
+
     draw_snapshot_stickers()
 
 def get_text_size(text, size=TEXT_SIZE):
