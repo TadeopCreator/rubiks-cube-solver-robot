@@ -4,10 +4,17 @@ This repository comprises the code for a Rubik's Cube solver robot project. The 
 
 ## Media
 
-- [Cube Scanning Images](#) (Provide image links)
-- [Structure Images](#) (Provide image links)
-- [PCB and EDU CIAA Images](#) (Provide image links)
-- [YouTube Video](#) (Insert link to the operational video)
+<div align="center">
+  <img src="https://github.com/TadeopCreator/rubiks-cube-solver-robot/blob/master/images/structure/structure.jpeg" alt="Structure Images" width="500"/>
+  <img src="https://github.com/TadeopCreator/rubiks-cube-solver-robot/blob/master/images/edu_ciaa/edu_ciaa.jpeg" alt="Structure Images" width="500" style="margin-top: -200px;"/>
+</div>
+
+<div align="center">
+  <img src="https://github.com/TadeopCreator/rubiks-cube-solver-robot/blob/master/images/cube_scanning/automatic_scan.png" alt="Cube Scanning Images" width="400"/>
+  <img src="https://github.com/TadeopCreator/rubiks-cube-solver-robot/blob/master/images/cube_scanning/manual_setup.png" alt="Manual Setup" width="400"/>
+</div>
+
+[Project demo](link_to_project_demo)
 
 ## Overview
 
@@ -34,7 +41,7 @@ To begin with the project:
 
 ## Built With
 
-This project was developed using the [EDU CIAA NXP microcontroller](https://www.proyecto-ciaa.com.ar/devwiki/doku.php?id=desarrollo:edu-ciaa:edu-ciaa-nxp) and was part of the "Taller de Proyecto 1" course at the Faculty of Engineering of UNLP.
+This project was developed using the [EDU CIAA NXP microcontroller](https://github.com/ciaa) and was part of the "Taller de Proyecto 1" course at the Faculty of Engineering of UNLP.
 
 ## License
 
