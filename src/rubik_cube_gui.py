@@ -37,9 +37,6 @@ TEXT_SIZE = 18
 # Config
 CUBE_PALETTE = 'cube_palette'
 
-#serialPort = serial.Serial(port='COM4', baudrate=9600, timeout=0, parity=serial.PARITY_EVEN, stopbits=1)
-
-
 def show_text(txt):
     """Display messages."""
     print(txt)
@@ -120,18 +117,11 @@ def solve():
             count = count_moves(algo)
             show_text(f'Solution: {algo}\n')
             show_text(f'Number of movements: {count}\n')
-            show_text("Sending via Bluetooth...\n")
-            #send_bluetooth(algo)
         else:
             show_text('Already solved')
     except BaseException as e:
         show_text(e.args[0])
         return
-    
-def send_bluetooth(solution):
-    #serialPort.flush()
-    #serialPort.write(str.encode(solution))
-    show_text("Sended")
 
 ################################## Functions to change the facelet colors #############################################
 
@@ -546,7 +536,7 @@ def update_snapshot_state():
                 modified_string = algo.replace("'", "-")
 
                 # Add ! at the end
-                modified_string += "!"
+                modified_string += " !"
 
                 print(modified_string)
             else:
@@ -687,7 +677,7 @@ def draw_2d_cube_state():
 def set_mode_auto():
     global manual_mode, cam, width, height, canvas
 
-    cam = cv2.VideoCapture(0)
+    cam = cv2.VideoCapture(1)
     print('Webcam successfully started')
     cam.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
     cam.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
