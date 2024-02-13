@@ -1,11 +1,12 @@
-//==================[inlcusiones]============================================/
+//==================[inclusiones]============================================/
 
 #include "sapi.h"        // <= Biblioteca sAPI
 #include <string.h>
+#include "goodies.h"
 
 //==================[definiciones y macros]==================================/
 
-#define UART_PC        UART_USB
+
 #define UART_BLUETOOTH UART_232
 
 #define STEP6L GPIO7
@@ -27,16 +28,9 @@
 #define HORARIO 0
 #define ANTIHORARIO 1
 
-#define INACCURATE_TO_US 20
 #define speed 700 //delay entre pasos [uS] (micro-segundos)
 
-//==================[definiciones de datos internos]=========================/
-
-void delayInaccurateMsB(int delay_ms);
-
-//==================[definiciones de datos externos]=========================/
-
-void moverMotor(int dir_motor, int motor, int pasos, uint8_t direccion, int velocidad);
+//==================[definiciones de funciones]=========================/
 
 void resolverCubo(char* instrucciones, uint8_t max);
 
@@ -52,7 +46,7 @@ int main( void )
     char buffer[121];
     uint8_t i = 0;
 
-    delayInaccurateMsB(5000);
+    delayInaccurateUs(5000);
 
     while(1) {
     	if( uartReadByte( UART_BLUETOOTH, &data ) ) {
@@ -70,6 +64,8 @@ int main( void )
 
 //==================[definiciones de funciones internas]=====================/
 
+
+//INICIALIZACION DEL SISTEMA
 void initSystem(){
     boardConfig();
 
@@ -98,121 +94,97 @@ void initSystem(){
     uartConfig( UART_BLUETOOTH, 9600 );
 }
 
-// Delay apropiativo inexacto
-void delayInaccurateMsB(int delay_us){
-   volatile int i;
-   volatile int delay;
-   delay = INACCURATE_TO_US * delay_us;
-   for( i=delay; i>0; i-- );
-}
+//TRADUCE EL STRING ENVIADO POR BLUETOOTH A INFO QUE SE LE PUEDE ENVIAR AL DRIVER DEL MOTOR
 
-void moverMotor(int dir_motor, int motor, int pasos, uint8_t direccion, int delay){
-    gpioWrite(dir_motor, direccion);
-	//gpioWrite( LED1, ON );
-
-	for(int i=0; i<pasos; i++){
-	  gpioWrite( motor, ON);
-	  delayInaccurateMsB(delay);
-	  gpioWrite( motor, OFF);
-	  delayInaccurateMsB(delay);
-	}
-	//gpioWrite( LED1, OFF );
-}
-
-void resolverCubo(char* instrucciones, uint8_t max){
+void resolverCubo(char* instrucciones, uint8_t max){ 
+	uint8_t dirPin;
+	uint8_t stepPin;
+	uint8_t pasos;
+	uint8_t direccion;
+	uint8_t delay
     for (uint8_t i = 0; i < max; i++){
         switch(instrucciones[i++]){
             case 'L': //B C R2
-                if (instrucciones[i] =='-'){ //90 grados antihorario
-                    moverMotor(DIR6L,STEP6L,50,ANTIHORARIO,speed);
-                    delayInaccurateMsB(delay_Giro);
-                    i++;
-                } else if (instrucciones[i] == '2'){ //180 grados
-                    moverMotor(DIR6L,STEP6L,100,HORARIO,speed);
-                    delayInaccurateMsB(delay_Giro);
-                    i++;
-                } else { //90 grados horario
-                    moverMotor(DIR6L,STEP6L,50,HORARIO,speed);
-                    delayInaccurateMsB(delay_Giro);
-                }
-
+				dirPin= DIR6L; stepPin= STEP6L;
                 break;
             case 'R':
+				dirPin= DIR3R; stepPin= STEP3R
             	if (instrucciones[i] =='-'){ //90 grados antihorario
-            	    moverMotor(DIR3R,STEP3R,50,ANTIHORARIO,speed);
-            	                    delayInaccurateMsB(delay_Giro);
-            	                    i++;
-            	                } else if (instrucciones[i] == '2'){ //180 grados
-            	                    moverMotor(DIR3R,STEP3R,100,HORARIO,speed);
-            	                    delayInaccurateMsB(delay_Giro);
-            	                    i++;
-            	                } else { //90 grados horario
-            	                    moverMotor(DIR3R,STEP3R,50,HORARIO,speed);
-            	                    delayInaccurateMsB(delay_Giro);
-            	                }
-
-            	                break;
+                    pasos= 50;
+					direccion= ANTIHORARIO;
+                    i++;
+                } else if (instrucciones[i] == '2'){ //180 grados
+                    pasos= 100;
+					direccion= HORARIO;
+                    i++;
+                } else { //90 grados horario
+                    pasos= 50;
+					direccion= HORARIO;
+                }
+				 break;
             case 'D':
+				dirPin= DIR5D; stepPin= STEP5D
             	if (instrucciones[i] =='-'){ //90 grados antihorario
-            	                    moverMotor(DIR5D,STEP5D,50,ANTIHORARIO,speed);
-            	                    delayInaccurateMsB(delay_Giro);
-            	                    i++;
-            	                } else if (instrucciones[i] == '2'){ //180 grados
-            	                    moverMotor(DIR5D,STEP5D,100,HORARIO,speed);
-            	                    delayInaccurateMsB(delay_Giro);
-            	                    i++;
-            	                } else { //90 grados horario
-            	                    moverMotor(DIR5D,STEP5D,50,HORARIO,speed);
-            	                    delayInaccurateMsB(delay_Giro);
-            	                }
-
-            	                break;
+                    pasos= 50;
+					direccion= ANTIHORARIO;
+                    i++;
+                } else if (instrucciones[i] == '2'){ //180 grados
+                    pasos= 100;
+					direccion= HORARIO;
+                    i++;
+                } else { //90 grados horario
+                    pasos= 50;
+					direccion= HORARIO;
+                }
+				break;
             case 'B':
-            	if (instrucciones[i] =='-'){ //90 grados antihorario
-            	    moverMotor(DIR2B,STEP2B,50,ANTIHORARIO,speed);
-            	    delayInaccurateMsB(delay_Giro);
-            	    i++;
-            	} else if (instrucciones[i] == '2'){ //180 grados
-            	    moverMotor(DIR2B,STEP2B,100,HORARIO,speed);
-            	    delayInaccurateMsB(delay_Giro);
-            	    i++;
-            	} else { //90 grados horario
-            	    moverMotor(DIR2B,STEP2B,50,HORARIO,speed);
-            	    delayInaccurateMsB(delay_Giro);
-            	}
-
+				dirPin= DIR2B; stepPin= STEP2B
+				if (instrucciones[i] =='-'){ //90 grados antihorario
+                    pasos= 50;
+					direccion= ANTIHORARIO;
+                    i++;
+                } else if (instrucciones[i] == '2'){ //180 grados
+                    pasos= 100;
+					direccion= HORARIO;
+                    i++;
+                } else { //90 grados horario
+                    pasos= 50;
+					direccion= HORARIO;
+                }
             	break;
-            case 'U':
+            case 'U':  //CASO ESPECIAL: LOS SENTIDOS ESTAN INVERTIDOS
+				dirPin= DIR4U; stepPin= STEP4U
             	if (instrucciones[i] =='-'){ //90 grados antihorario
-            	    moverMotor(DIR4U,STEP4U,50,!ANTIHORARIO,speed);
-            	    delayInaccurateMsB(delay_Giro);
-            	    i++;
-            	                } else if (instrucciones[i] == '2'){ //180 grados
-            	                    moverMotor(DIR4U,STEP4U,100,!HORARIO,speed);
-            	                    delayInaccurateMsB(delay_Giro);
-            	                    i++;
-            	                } else { //90 grados horario
-            	                    moverMotor(DIR4U,STEP4U,50,!HORARIO,speed);
-            	                    delayInaccurateMsB(delay_Giro);
-            	                }
-
-            	                break;
-            case 'F':
+                    pasos= 50;
+					direccion= !ANTIHORARIO;
+                    i++;
+                } else if (instrucciones[i] == '2'){ //180 grados
+                    pasos= 100;
+					direccion= !HORARIO;
+                    i++;
+                } else { //90 grados horario
+                    pasos= 50;
+					direccion= !HORARIO;
+                }
+                break;
+            case 'F': //CASO ESPECIAL: NO PUEDE GIRAR EN UN SENTIDO
+				dirPin= DIR1F; stepPin= STEP1F
             	if (instrucciones[i] =='-'){ //90 grados antihorario
-            	                    moverMotor(DIR1F,STEP1F,150,ANTIHORARIO,speed);
-            	                    delayInaccurateMsB(delay_Giro);
-            	                    i++;
-            	                } else if (instrucciones[i] == '2'){ //180 grados
-            	                    moverMotor(DIR1F,STEP1F,100,HORARIO,speed);
-            	                    delayInaccurateMsB(delay_Giro);
-            	                    i++;
-            	                } else { //90 grados horario
-            	                    moverMotor(DIR1F,STEP1F,50,HORARIO,speed);
-            	                    delayInaccurateMsB(delay_Giro);
-            	                }
-
-            	                break;
+                    pasos= 150;
+					direccion= ANTIHORARIO;
+                    i++;
+                } else if (instrucciones[i] == '2'){ //180 grados
+                    pasos= 100;
+					direccion= HORARIO;
+                    i++;
+                } else { //90 grados horario
+                    pasos= 50;
+					direccion= HORARIO;
+                }
+            	break;
         }
+		moverMotor(dirPIN,stepPIN,pasos,direccion,speed);
+        delayInaccurateUs(delay_Giro);
     }
 
 }
