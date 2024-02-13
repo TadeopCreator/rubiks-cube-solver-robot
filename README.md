@@ -14,7 +14,9 @@ This repository comprises the code for a Rubik's Cube solver robot project. The 
   <img src="https://github.com/TadeopCreator/rubiks-cube-solver-robot/blob/master/images/cube_scanning/manual_setup.png" alt="Manual Setup" width="400"/>
 </div>
 
-[Project demo](link_to_project_demo)
+<br>
+
+[Project demo](https://github.com/TadeopCreator/rubiks-cube-solver-robot/tree/master/demo)
 
 ## Overview
 
